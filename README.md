@@ -1,102 +1,96 @@
-# AmalGus Smart Glass Discovery
+# AmalGus Glass Marketplace Prototype
 
-> An intelligent, AI-powered B2B marketplace allowing users to discover the perfect glass products through natural language queries.
+An intelligent, AI-powered B2B and B2C marketplace allowing users to discover specific glass products and related hardware through natural language queries.
 
-> **To run:** `npm install` → add `.env` → `npm run dev`
-
-## 🛠️ Tech Stack
+## Technology Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 (via Vite) |
-| Styling | Tailwind CSS v4 |
-| Semantic Embeddings | `@xenova/transformers` — `Xenova/all-MiniLM-L6-v2` (384-dim, browser WASM) |
-| AI Re-ranking | Groq API — `llama-3.3-70b-versatile` |
+| Frontend | React 18, Vite |
+| Styling | Tailwind CSS v4, Custom Design System |
+| Vector Search | Pure-JS TF-IDF Semantic Indexing |
+| AI Re-ranking | Groq API (llama-3.3-70b-versatile) |
 | Icons | Lucide React |
 
-## 🚀 How to Run Locally
+## Setup Instructions
 
-1. **Clone or Download the Repository**
-2. **Install Dependencies**
+1. Install Dependencies
    ```bash
    npm install
    ```
-3. **Configure Environment Variables**
-   Create a `.env` file in the root directory (or use the provided `.env.example` as a template) and add your Groq API key:
+
+2. Configure Environment Variables
+   Create a `.env` file in the root directory and add a valid Groq API key:
    ```env
    VITE_GROQ_API_KEY=your_groq_api_key_here
    ```
-4. **Start the Development Server**
+
+3. Start the Development Server
    ```bash
    npm run dev
    ```
    The application will be accessible at `http://localhost:5173`.
 
-## 🧠 How the Matching Works (3-Stage Pipeline)
+## Intelligent Matching Architecture
 
-The application uses a **3-stage hybrid pipeline** for accurate, efficient product discovery:
+The application utilizes a high-performance 3-stage hybrid search pipeline to ensure both accuracy and speed in product discovery.
 
 ```
 User Query
-    │
-    ▼
-┌─────────────────────────────────┐
-│ Stage 1: Hard Filters            │
-│ Category, Certification, Price,  │
-│ Min/Max Thickness → exact match  │
-└─────────────────────────────────┘
-    │ e.g. 15 products → 9 remain
-    ▼
-┌─────────────────────────────────┐
-│ Stage 2: Vector Search           │
-│ Embed query via                  │
-│ Xenova/all-MiniLM-L6-v2 (WASM)  │
-│ Cosine similarity vs products    │
-│ → Top 8 semantic candidates     │
-└─────────────────────────────────┘
-    │ e.g. 9 products → top 8
-    ▼
-┌─────────────────────────────────┐
-│ Stage 3: LLM Re-ranking          │
-│ Top 8 + query sent to Groq       │
-│ llama-3.3-70b-versatile assigns: │
-│  • matchScore (0-100)            │
-│  • matchReason (2-3 sentences)   │
-│  • highlightedAttributes         │
-└─────────────────────────────────┘
-    │
-    ▼
- Top 4-5 ranked results displayed
+    |
+    v
++---------------------------------+
+| Stage 1: Hard Filters           |
+| Category, Certification, Price, |
+| Min/Max Thickness constraints   |
++---------------------------------+
+    | (Reduces dataset)
+    v
++---------------------------------+
+| Stage 2: TF-IDF Vector Search   |
+| Pure-JS term frequency analysis |
+| Cosine similarity evaluation    |
+| Outputs top candidates          |
++---------------------------------+
+    | (Filters to top matches)
+    v
++---------------------------------+
+| Stage 3: LLM Re-ranking         |
+| Groq LLM evaluates candidates   |
+| Assigns exact matchScore        |
+| Generates matchReason           |
+| Extracts highlightedAttributes  |
++---------------------------------+
+    |
+    v
+ Final Result Rendered in UI
 ```
 
-**Why 3 stages?** Hard filters eliminate incompatible products cheaply. Vector search finds semantically related products even when keywords don't match exactly (e.g., "soundproofing glass" → matches acoustic laminated). The LLM adds human-readable reasoning and a precise match score — things embeddings can't easily provide.
+### Purpose of the 3-Stage Pipeline
+1. **Hard Filtering**: Instantly removes incompatible products, reducing context size for subsequent stages.
+2. **Vector Search**: Identifies semantically related products based on domain-specific terminology overlapping, handling variations in phrasing without needing exact string matches. Implemented via pure-JS TF-IDF to avoid heavy WASM loads in the browser.
+3. **LLM Re-ranking**: Adds sophisticated human-readable reasoning to the matches and provides a highly accurate percentage-based compatibility score.
 
-**Product embeddings** are pre-computed on app load using `Xenova/all-MiniLM-L6-v2` running entirely in the browser via ONNX Runtime Web (no server needed). They are cached in a `useRef` and reused for every subsequent query in the same session.
+## Key Design Decisions and Trade-offs
 
-## 🤖 AI Tools Used
+| Decision | Rationale |
+|---|---|
+| TF-IDF over Neural Embeddings | For a 15-product dataset, pure-JS TF-IDF initializes in under 10ms with zero external dependencies, resolving WebAssembly (WASM) compatibility issues present in typical browser ONNX setups. |
+| Client-side Architecture | Driven by prototype velocity. The Groq API is called directly from the frontend. In a production environment, this would be proxied through a secure backend server. |
+| Mock Dataset | Utilizes 15 hyper-realistic Indian market glass specifications, as live supplier API integratons fall outside the scope of the prototype phase. |
 
-* **Architecture & Planning**: Claude 
-* **Code Generation & Execution**: Google's Antigravity / Cursor
+## Feature Set Highlight
 
-## ⚖️ Key Trade-offs
+- **Dynamic Query Suggestions**: Contextual autocomplete options surface once string character thresholds are met, mapped against common industry use-cases.
+- **Explainable AI Matching**: Each product card renders a dynamically generated badge categorizing the nature of the match (e.g., Best Overall, Budget Match, Use Case Match) based on the LLM's rationale.
+- **Editorial UI Elements**: Features dark-mode glassmorphic styling, variable fonts (Syne and Inter), and subtle micro-animations to convey a premium marketplace experience.
 
-| Trade-off | Decision | Reason |
-|---|---|---|
-| No Vector DB | LLM handles semantic matching directly | Dataset is small (15 products); vector infra adds overhead with no benefit at this scale |
-| Mock data only | 15 hyper-realistic Indian market products | No live supplier API is available for prototype |
-| No auth / backend | Direct Groq call from frontend | Prototype velocity; production would proxy through a secure server |
-| Hard filter before LLM | Narrow dataset pre-LLM | Reduces tokens, improves LLM focus and response quality |
+## Testing the Engine
 
-## ✨ Bonus Features
+To evaluate the pipeline, we recommend inputting complete requirement statements into the primary search interface. 
 
-* **Intelligent Query Suggestions**: Once a user types 10+ characters, a smart dropdown detects string matches against common building use-cases to suggest refined queries—requiring *zero* supplemental API calls.
-* **Match Explainer Badges**: AI responses are translated visually. Each matched product receives a corner ribbon derived dynamically from the AI's logic (e.g. classifying it as a `"Best Overall"`, `"Budget Match"`, `"Use Case Match"`, or `"Spec Match"`).
-
-## 💡 Example Queries to Try
-
-We recommend typing these directly into the search bar:
-* *"6mm tempered glass for office partitions, polished edges, clear"*
-* *"Thick acoustic glass for extreme noise reduction in a high traffic home"*
-* *"Affordable double glazed unit for a commercial building project"*
-* *"Blue tinted facade glass with UV protection"*
-* *"Heavy duty shop storefront glass requiring maximum safety certifications"*
+Examples:
+- "6mm tempered glass for office partitions, polished edges, clear"
+- "Thick acoustic glass for extreme noise reduction in a high traffic home"
+- "Affordable double glazed unit for a commercial building project"
+- "Heavy duty shop storefront glass requiring maximum safety certifications"
